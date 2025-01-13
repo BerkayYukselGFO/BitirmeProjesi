@@ -11,9 +11,13 @@ public class ChartTest : MonoBehaviour
 
     private void Start()
     {
+        lineChart.ClearData();
         for (int i = 0; i < 5; i++)
         {
-            lineChart.AddData(0, UnityEngine.Random.Range(0, 10));
+            var time = DateTime.Now.AddDays(i);
+            var beginTime = new DateTime(1970, 1, 1);
+            var differenceInMinutes = (time - beginTime).TotalSeconds;
+            lineChart.AddData(0, differenceInMinutes, UnityEngine.Random.Range(5, 90));
         }
 
     }
@@ -24,9 +28,11 @@ public class ChartTest : MonoBehaviour
         {
             for (int i = 0; i < 5; i++)
             {
-                lineChart.AddData(0, UnityEngine.Random.Range(0, 10));
+                var time = DateTime.Now.AddDays(i);
+                var beginTime = new DateTime(1970, 1, 1);
+                var differenceInMinutes = (time - beginTime).TotalSeconds;
+                lineChart.AddData(0, differenceInMinutes, UnityEngine.Random.Range(5, 90));
             }
-
         }
     }
 
