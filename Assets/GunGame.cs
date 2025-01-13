@@ -5,7 +5,6 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-
 [System.Serializable]
 public class TargetAndSpawnTime
 {
@@ -18,7 +17,6 @@ public class TargetAndSpawnTime
 		this.spawnTime = spawnTime;
 	}
 }
-
 
 public class GunGame : Singleton<GunGame>
 {
@@ -34,6 +32,12 @@ public class GunGame : Singleton<GunGame>
 	private float gameStartTime;
 	private int hitCount = 0;
 	[SerializeField] private bool editorPlay;
+
+	[Header("Real-Time Panel")] // Sürekli güncellenen metinler
+	[SerializeField] private Transform realTimePanel;
+	[SerializeField] private TextMeshProUGUI accuracyText;
+	[SerializeField] private TextMeshProUGUI averageReactionTimeText;
+	[SerializeField] private TextMeshProUGUI elapsedTimeText;
 
 	private void Start()
 	{
@@ -55,6 +59,7 @@ public class GunGame : Singleton<GunGame>
 			StopAllCoroutines();
 			responseTime.Clear();
 			targetAndSpawnTimes.Clear();
+			hitCount = 0;
 			informationPanel.gameObject.SetActive(false);
 			StartGame();
 		});
@@ -65,6 +70,7 @@ public class GunGame : Singleton<GunGame>
 		gameStartTime = Time.time; // Oyunun başlangıç zamanı
 		StartCoroutine(SpawnTarget());
 		startGameButton.gameObject.SetActive(false);
+		realTimePanel.gameObject.SetActive(true);
 	}
 
 	private IEnumerator SpawnTarget()
@@ -89,19 +95,23 @@ public class GunGame : Singleton<GunGame>
 			}
 		}
 
+		float totalTime = Time.time - gameStartTime; // Toplam oyun süresi
+		yield return new WaitForSeconds(2f);
+		realTimePanel.gameObject.SetActive(false);
 		// Oyun bittiğinde sonuçları göster
 		informationPanel.gameObject.SetActive(true);
-		float totalTime = Time.time - gameStartTime; // Toplam oyun süresi
 		float accuracy = (float)hitCount / targetCount; // Doğruluk oranı
-		infoText.text = $"Ortalama Reaksiyon Süresi: {responseTime.Average():F2}\n" +
-						$"Doğruluk: {accuracy:P2}\n" +
-						$"Toplam Süre: {totalTime:F2} saniye";
+		infoText.text = $"Ortalama Reaksiyon Süresi: <b>{responseTime.Average():F2}\n" +
+						$"Doğruluk: <b>{accuracy:P2}\n" +
+						$"Toplam Süre: <b>{totalTime:F2} saniye";
+
+		SaveSystem.Instance.AddTraining(new TrainInformation(responseTime.Average(), accuracy, totalTime));
 	}
 
 	private IEnumerator HandleTargetLifetime(Target target)
 	{
 		yield return new WaitForSeconds(5f);
-
+		if (target == null) yield break;
 		// Son 3 saniyede mesh renderer'ı yanıp söndür
 		var renderer = target.GetComponent<MeshRenderer>();
 		if (renderer != null)
@@ -109,19 +119,23 @@ public class GunGame : Singleton<GunGame>
 			float blinkDuration = 0.3f; // Yanıp sönme süresi
 			for (float t = 0; t < 3f; t += blinkDuration)
 			{
+				if (renderer == null) yield break;
 				renderer.enabled = false;
 				yield return new WaitForSeconds(0.1f);
+				if (renderer == null) yield break;
 				renderer.enabled = true;
 				yield return new WaitForSeconds(0.2f);
+				if (renderer == null) yield break;
 			}
 		}
-
+		if (target == null) yield break;
 		// Hedefi yok et
 		Destroy(target.gameObject);
 	}
 
 	private void Update()
 	{
+		// Hedef yok edildiğinde vurulan hedef sayısını artır
 		for (int i = targetAndSpawnTimes.Count - 1; i >= 0; i--)
 		{
 			if (targetAndSpawnTimes[i].target == null)
@@ -131,6 +145,16 @@ public class GunGame : Singleton<GunGame>
 				hitCount++; // Vurulan hedef sayısını artır
 			}
 		}
+
+		// Gerçek zamanlı panel güncellemesi
+		float totalElapsedTime = Time.time - gameStartTime; // Toplam geçen süre
+		float accuracy = hitCount > 0 ? (float)hitCount / targetCount : 0f; // Doğruluk oranı
+		float avgReactionTime = responseTime.Count > 0 ? responseTime.Average() : 0f; // Ortalama reaksiyon süresi
+
+		// Textleri güncelle
+		accuracyText.text = $"Doğruluk: <b>{accuracy:P2}";
+		averageReactionTimeText.text = $"Ortalama Reaksiyon Süresi: <b>{avgReactionTime:F2} saniye";
+		elapsedTimeText.text = $"Geçen Süre: <b>{totalElapsedTime:F2} saniye";
 	}
 
 	private Vector3 RandomPos()

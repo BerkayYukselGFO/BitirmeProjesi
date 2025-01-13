@@ -70,5 +70,6 @@ public class SaveSystem : Singleton<SaveSystem>
     public void AddTraining(TrainInformation trainInformation)
     {
         saveFile.trainingAndDates.Add(new TrainingAndDate(DateTime.Now, trainInformation));
+        Save();
     }
 }
