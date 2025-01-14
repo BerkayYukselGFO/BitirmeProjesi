@@ -110,7 +110,7 @@ public class GunGame : Singleton<GunGame>
 
 	private IEnumerator HandleTargetLifetime(Target target)
 	{
-		yield return new WaitForSeconds(5f);
+		yield return new WaitForSeconds(12f);
 		if (target == null) yield break;
 		// Son 3 saniyede mesh renderer'ı yanıp söndür
 		var renderer = target.GetComponent<MeshRenderer>();
