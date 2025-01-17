@@ -33,6 +33,7 @@ public class SerialReader : Singleton<SerialReader>
 	[SerializeField] private CanvasGroup com3DosentExitsWarningCanvasGroup;
 	public System.Action OnCalibrateDone;
 	[SerializeField] private Image connectionImage;
+	[SerializeField] private string rawValue = "";
 	void Start()
 	{
 		kalmanState = new List<Vector4> { Vector4.zero, Vector4.zero, Vector4.zero };
@@ -43,6 +44,7 @@ public class SerialReader : Singleton<SerialReader>
 		{
 			InitiliazeConnection();
 		});
+		serialPort.Open();
 
 	}
 	private void InitiliazeConnection()
@@ -66,36 +68,26 @@ public class SerialReader : Singleton<SerialReader>
 			return;
 		}
 
-		
+
 		StartCoroutine(CalibrateSensors());
 	}
-	string buffer = ""; // Gelen verileri geçici olarak saklama
+	[SerializeField] string buffer = ""; // Gelen verileri geçici olarak saklama
 
 	private IEnumerator CalibrateSensors()
 	{
-		
+
 		connectionImage.color = Color.green;
 		connectionFrame.gameObject.SetActive(true);
 		slider.value = 0f;
 		percentText.text = "%0";
 		informationText.text = "Sensörden veriler okunuyor, lütfen haraketsiz kalın...";
-		
+
 		yield return new WaitForSeconds(2f);
-		if (serialPort.IsOpen)
-		{
-			serialPort.Close();
-		}
-
-		if (!serialPort.IsOpen)
-		{
-			serialPort.Open();
-		}
-
 		isOpened = true;
-		
+
 		yield return new WaitForSeconds(0.5f);
 		var timer = 0f;
-		while (rawQuaternions[0].x != 0f)
+		while (rawQuaternions[0].x == 0f)
 		{
 			yield return null;
 			timer += Time.deltaTime;
@@ -111,10 +103,10 @@ public class SerialReader : Singleton<SerialReader>
 		yield return new WaitForSeconds(1f);
 		timer = 0f;
 		var nextTarget = 1f;
-		while (timer < 60f)
+		while (timer < 10f)
 		{
 			timer += Time.deltaTime;
-			var ratio = Mathf.Lerp(0.25f, 1f, Mathf.InverseLerp(0f, 60f, timer));
+			var ratio = Mathf.Lerp(0.25f, 1f, Mathf.InverseLerp(0f, 10f, timer));
 			slider.value = ratio;
 			percentText.text = "%" + (slider.value * 100f).ToString("F0");
 			if (timer > nextTarget)
@@ -149,7 +141,13 @@ public class SerialReader : Singleton<SerialReader>
 				offsets[i] = rawQuaternions[i]; // Offset olarak kaydet
 			}
 		}
-		if (!isOpened) return;
+
+		
+		if (!isOpened)
+		{
+			rawValue = serialPort.ReadExisting();
+			return;
+		}
 
 		if (serialPort.IsOpen)
 		{
@@ -182,7 +180,7 @@ public class SerialReader : Singleton<SerialReader>
 							kalmanState[channel].w
 						);
 
-						calculatedQuaternions[channel] = Quaternion.Inverse(offsets[channel]) * filteredQuaternion;
+						calculatedQuaternions[channel] = Quaternion.Inverse(offsets[channel]) * rawQuaternions[channel];
 						calculatedQuaternions[channel].Normalize();
 					}
 				}
